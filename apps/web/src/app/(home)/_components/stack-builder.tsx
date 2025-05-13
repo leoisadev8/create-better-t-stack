@@ -288,7 +288,6 @@ const analyzeStackCompatibility = (stack: StackState): CompatibilityResult => {
 				notes.backend.notes.push(
 					`No backend requires ${displayName} to be '${valueDisplay}'.`,
 				);
-				notes.catKey.hasIssue = true;
 				notes[catKey].hasIssue = true;
 				(nextStack[catKey] as string | string[]) = value;
 				changed = true;

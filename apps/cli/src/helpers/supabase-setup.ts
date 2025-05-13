@@ -1,5 +1,5 @@
 import path from "node:path";
-import { log, spinner } from "@clack/prompts";
+import { log } from "@clack/prompts";
 import { consola } from "consola";
 import { type ExecaError, execa } from "execa";
 import fs from "fs-extra";
