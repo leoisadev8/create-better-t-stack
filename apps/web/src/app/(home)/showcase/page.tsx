@@ -1,11 +1,19 @@
 "use client";
 
+import React from "react";
 import { FolderOpen, Terminal } from "lucide-react";
 import { motion } from "motion/react";
 import Navbar from "../_components/navbar";
 import ShowcaseItem from "./_components/ShowcaseItem";
 
 const showcaseProjects = [
+	{
+		title: "gl1.chat",
+		description: "An ai platform focused on speed, reliability and advanced workflows powered by trpc, drizzle, vite, elysia, tanstack router",
+		imageUrl: "https://gl1.chat/", // Placeholder, consider adding a proper image if available
+		liveUrl: "https://gl1.chat/?ref=better-t-stack",
+		tags: ["tRPC", "Drizzle", "Elysia", "Vite", "TanStack Router"],
+	},
 	{
 		title: "Project Alpha",
 		description: "A cool project built with Better-T-Stack.",
