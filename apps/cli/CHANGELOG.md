@@ -1,5 +1,11 @@
 # create-better-t-stack
 
+## 2.19.0
+
+### Minor Changes
+
+- 99d6538: add cloudflare workers support for hono
+
 ## 2.18.5
 
 ### Patch Changes
