@@ -186,7 +186,9 @@ export async function setupEnvironmentVariables(
 		dbSetup === "prisma-postgres" ||
 		dbSetup === "mongodb-atlas" ||
 		dbSetup === "neon" ||
-		dbSetup === "supabase";
+		dbSetup === "supabase" ||
+		dbSetup === "d1" ||
+		dbSetup === "docker";
 
 	if (database !== "none" && !specializedSetup) {
 		switch (database) {
@@ -200,7 +202,11 @@ export async function setupEnvironmentVariables(
 				databaseUrl = "mongodb://localhost:27017/mydatabase";
 				break;
 			case "sqlite":
-				databaseUrl = "file:./local.db";
+				if (config.runtime === "workers") {
+					databaseUrl = "http://127.0.0.1:8080";
+				} else {
+					databaseUrl = "file:./local.db";
+				}
 				break;
 		}
 	}
@@ -234,4 +240,11 @@ export async function setupEnvironmentVariables(
 	];
 
 	await addEnvVariablesToFile(envPath, serverVars);
+
+	if (config.runtime === "workers") {
+		const devVarsPath = path.join(serverDir, ".dev.vars");
+		try {
+			await fs.copy(envPath, devVarsPath);
+		} catch (_err) {}
+	}
 }

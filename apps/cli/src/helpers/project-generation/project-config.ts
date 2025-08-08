@@ -1,8 +1,7 @@
 import path from "node:path";
 import { log } from "@clack/prompts";
-import { $, execa } from "execa";
+import { execa } from "execa";
 import fs from "fs-extra";
-import pc from "picocolors";
 import type { ProjectConfig } from "../../types";
 
 export async function updatePackageConfigurations(
@@ -68,7 +67,7 @@ async function updateRootPackageJson(
 		scripts["dev:web"] = "turbo -F web dev";
 		scripts["dev:server"] = serverDevScript;
 		if (options.backend === "convex") {
-			scripts["dev:setup"] = `turbo -F ${backendPackageName} setup`;
+			scripts["dev:setup"] = `turbo -F ${backendPackageName} dev:setup`;
 		}
 		if (needsDbScripts) {
 			scripts["db:push"] = `turbo -F ${backendPackageName} db:push`;
@@ -81,6 +80,12 @@ async function updateRootPackageJson(
 				scripts["db:migrate"] = `turbo -F ${backendPackageName} db:migrate`;
 			}
 		}
+		if (options.dbSetup === "docker") {
+			scripts["db:start"] = `turbo -F ${backendPackageName} db:start`;
+			scripts["db:watch"] = `turbo -F ${backendPackageName} db:watch`;
+			scripts["db:stop"] = `turbo -F ${backendPackageName} db:stop`;
+			scripts["db:down"] = `turbo -F ${backendPackageName} db:down`;
+		}
 	} else if (options.packageManager === "pnpm") {
 		scripts.dev = devScript;
 		scripts.build = "pnpm -r build";
@@ -89,7 +94,7 @@ async function updateRootPackageJson(
 		scripts["dev:web"] = "pnpm --filter web dev";
 		scripts["dev:server"] = serverDevScript;
 		if (options.backend === "convex") {
-			scripts["dev:setup"] = `pnpm --filter ${backendPackageName} setup`;
+			scripts["dev:setup"] = `pnpm --filter ${backendPackageName} dev:setup`;
 		}
 		if (needsDbScripts) {
 			scripts["db:push"] = `pnpm --filter ${backendPackageName} db:push`;
@@ -106,6 +111,12 @@ async function updateRootPackageJson(
 					`pnpm --filter ${backendPackageName} db:migrate`;
 			}
 		}
+		if (options.dbSetup === "docker") {
+			scripts["db:start"] = `pnpm --filter ${backendPackageName} db:start`;
+			scripts["db:watch"] = `pnpm --filter ${backendPackageName} db:watch`;
+			scripts["db:stop"] = `pnpm --filter ${backendPackageName} db:stop`;
+			scripts["db:down"] = `pnpm --filter ${backendPackageName} db:down`;
+		}
 	} else if (options.packageManager === "npm") {
 		scripts.dev = devScript;
 		scripts.build = "npm run build --workspaces";
@@ -114,7 +125,8 @@ async function updateRootPackageJson(
 		scripts["dev:web"] = "npm run dev --workspace web";
 		scripts["dev:server"] = serverDevScript;
 		if (options.backend === "convex") {
-			scripts["dev:setup"] = `npm run setup --workspace ${backendPackageName}`;
+			scripts["dev:setup"] =
+				`npm run dev:setup --workspace ${backendPackageName}`;
 		}
 		if (needsDbScripts) {
 			scripts["db:push"] = `npm run db:push --workspace ${backendPackageName}`;
@@ -132,6 +144,14 @@ async function updateRootPackageJson(
 					`npm run db:migrate --workspace ${backendPackageName}`;
 			}
 		}
+		if (options.dbSetup === "docker") {
+			scripts["db:start"] =
+				`npm run db:start --workspace ${backendPackageName}`;
+			scripts["db:watch"] =
+				`npm run db:watch --workspace ${backendPackageName}`;
+			scripts["db:stop"] = `npm run db:stop --workspace ${backendPackageName}`;
+			scripts["db:down"] = `npm run db:down --workspace ${backendPackageName}`;
+		}
 	} else if (options.packageManager === "bun") {
 		scripts.dev = devScript;
 		scripts.build = "bun run --filter '*' build";
@@ -140,7 +160,7 @@ async function updateRootPackageJson(
 		scripts["dev:web"] = "bun run --filter web dev";
 		scripts["dev:server"] = serverDevScript;
 		if (options.backend === "convex") {
-			scripts["dev:setup"] = `bun run --filter ${backendPackageName} setup`;
+			scripts["dev:setup"] = `bun run --filter ${backendPackageName} dev:setup`;
 		}
 		if (needsDbScripts) {
 			scripts["db:push"] = `bun run --filter ${backendPackageName} db:push`;
@@ -156,6 +176,12 @@ async function updateRootPackageJson(
 				scripts["db:migrate"] =
 					`bun run --filter ${backendPackageName} db:migrate`;
 			}
+		}
+		if (options.dbSetup === "docker") {
+			scripts["db:start"] = `bun run --filter ${backendPackageName} db:start`;
+			scripts["db:watch"] = `bun run --filter ${backendPackageName} db:watch`;
+			scripts["db:stop"] = `bun run --filter ${backendPackageName} db:stop`;
+			scripts["db:down"] = `bun run --filter ${backendPackageName} db:down`;
 		}
 	}
 
@@ -225,7 +251,11 @@ async function updateServerPackageJson(
 	const scripts = serverPackageJson.scripts;
 
 	if (options.database !== "none") {
-		if (options.database === "sqlite" && options.orm === "drizzle") {
+		if (
+			options.database === "sqlite" &&
+			options.orm === "drizzle" &&
+			options.dbSetup !== "d1"
+		) {
 			scripts["db:local"] = "turso dev --db-file local.db";
 		}
 
@@ -240,6 +270,13 @@ async function updateServerPackageJson(
 			scripts["db:generate"] = "drizzle-kit generate";
 			scripts["db:migrate"] = "drizzle-kit migrate";
 		}
+	}
+
+	if (options.dbSetup === "docker") {
+		scripts["db:start"] = "docker compose up -d";
+		scripts["db:watch"] = "docker compose up";
+		scripts["db:stop"] = "docker compose stop";
+		scripts["db:down"] = "docker compose down";
 	}
 
 	await fs.writeJson(serverPackageJsonPath, serverPackageJson, {
@@ -266,32 +303,4 @@ async function updateConvexPackageJson(
 	}
 
 	await fs.writeJson(convexPackageJsonPath, convexPackageJson, { spaces: 2 });
-}
-
-export async function initializeGit(
-	projectDir: string,
-	useGit: boolean,
-): Promise<void> {
-	if (!useGit) return;
-
-	const gitVersionResult = await $({
-		cwd: projectDir,
-		reject: false,
-		stderr: "pipe",
-	})`git --version`;
-
-	if (gitVersionResult.exitCode !== 0) {
-		log.warn(pc.yellow("Git is not installed"));
-		return;
-	}
-
-	const result = await $({
-		cwd: projectDir,
-		reject: false,
-		stderr: "pipe",
-	})`git init`;
-
-	if (result.exitCode !== 0) {
-		throw new Error(`Git initialization failed: ${result.stderr}`);
-	}
 }

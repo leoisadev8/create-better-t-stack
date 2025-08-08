@@ -1,12 +1,13 @@
 import { cancel, isCancel, select } from "@clack/prompts";
 import pc from "picocolors";
-import type { Backend, DatabaseSetup, ORM } from "../types";
+import type { Backend, DatabaseSetup, ORM, Runtime } from "../types";
 
 export async function getDBSetupChoice(
 	databaseType: string,
 	dbSetup: DatabaseSetup | undefined,
 	orm?: ORM,
 	backend?: Backend,
+	runtime?: Runtime,
 ): Promise<DatabaseSetup> {
 	if (backend === "convex") {
 		return "none";
@@ -32,6 +33,15 @@ export async function getDBSetupChoice(
 				label: "Turso",
 				hint: "SQLite for Production. Powered by libSQL",
 			},
+			...(runtime === "workers"
+				? [
+						{
+							value: "d1" as const,
+							label: "Cloudflare D1",
+							hint: "Cloudflare's managed, serverless database with SQLite's SQL semantics",
+						},
+					]
+				: []),
 			{ value: "none" as const, label: "None", hint: "Manual setup" },
 		];
 	} else if (databaseType === "postgres") {
@@ -55,6 +65,20 @@ export async function getDBSetupChoice(
 						},
 					]
 				: []),
+			{
+				value: "docker" as const,
+				label: "Docker",
+				hint: "Run locally with docker compose",
+			},
+			{ value: "none" as const, label: "None", hint: "Manual setup" },
+		];
+	} else if (databaseType === "mysql") {
+		options = [
+			{
+				value: "docker" as const,
+				label: "Docker",
+				hint: "Run locally with docker compose",
+			},
 			{ value: "none" as const, label: "None", hint: "Manual setup" },
 		];
 	} else if (databaseType === "mongodb") {
@@ -63,6 +87,11 @@ export async function getDBSetupChoice(
 				value: "mongodb-atlas" as const,
 				label: "MongoDB Atlas",
 				hint: "The most effective way to deploy MongoDB",
+			},
+			{
+				value: "docker" as const,
+				label: "Docker",
+				hint: "Run locally with docker compose",
 			},
 			{ value: "none" as const, label: "None", hint: "Manual setup" },
 		];

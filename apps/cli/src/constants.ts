@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ProjectConfig } from "./types";
+import type { Frontend, ProjectConfig } from "./types";
 import { getUserPkgManager } from "./utils/get-package-manager";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,16 +24,18 @@ export const DEFAULT_CONFIG: ProjectConfig = {
 	backend: "hono",
 	runtime: "bun",
 	api: "trpc",
+	webDeploy: "none",
 };
 
 export const dependencyVersionMap = {
-	"better-auth": "^1.2.9",
-	"@better-auth/expo": "^1.2.9",
+	"better-auth": "^1.2.10",
+	"@better-auth/expo": "^1.2.10",
 
-	"drizzle-orm": "^0.38.4",
-	"drizzle-kit": "^0.30.5",
+	"drizzle-orm": "^0.44.2",
+	"drizzle-kit": "^0.31.2",
 
-	"@libsql/client": "^0.14.0",
+	"@libsql/client": "^0.15.9",
+	"@neondatabase/serverless": "^1.0.1",
 	pg: "^8.14.1",
 	"@types/pg": "^8.11.11",
 
@@ -44,17 +46,16 @@ export const dependencyVersionMap = {
 
 	mongoose: "^8.14.0",
 
-	"vite-plugin-pwa": "^0.21.2",
-	"@vite-pwa/assets-generator": "^0.2.6",
+	"vite-plugin-pwa": "^1.0.1",
+	"@vite-pwa/assets-generator": "^1.0.0",
 
 	"@tauri-apps/cli": "^2.4.0",
 
-	"@biomejs/biome": "1.9.4",
+	"@biomejs/biome": "^2.0.0",
 
 	husky: "^9.1.7",
 	"lint-staged": "^15.5.0",
 
-	"@hono/node-server": "^1.14.0",
 	tsx: "^4.19.2",
 	"@types/node": "^22.13.11",
 
@@ -66,8 +67,9 @@ export const dependencyVersionMap = {
 	"@elysiajs/trpc": "^1.1.0",
 	elysia: "^1.2.25",
 
-	"@hono/trpc-server": "^0.3.4",
-	hono: "^4.7.6",
+	"@hono/node-server": "^1.14.4",
+	"@hono/trpc-server": "^0.4.0",
+	hono: "^4.8.2",
 
 	cors: "^2.8.5",
 	express: "^5.1.0",
@@ -91,11 +93,11 @@ export const dependencyVersionMap = {
 	"@orpc/client": "^1.5.0",
 	"@orpc/tanstack-query": "^1.5.0",
 
-	"@trpc/tanstack-react-query": "^11.0.0",
-	"@trpc/server": "^11.0.0",
-	"@trpc/client": "^11.0.0",
+	"@trpc/tanstack-react-query": "^11.4.2",
+	"@trpc/server": "^11.4.2",
+	"@trpc/client": "^11.4.2",
 
-	convex: "^1.23.0",
+	convex: "^1.25.0",
 	"@convex-dev/react-query": "^0.0.0-alpha.8",
 	"convex-svelte": "^0.0.11",
 
@@ -105,6 +107,33 @@ export const dependencyVersionMap = {
 
 	"@tanstack/solid-query": "^5.75.0",
 	"@tanstack/solid-query-devtools": "^5.75.0",
+
+	wrangler: "^4.23.0",
+	"@cloudflare/vite-plugin": "^1.9.0",
+	"@opennextjs/cloudflare": "^1.3.0",
+	"nitro-cloudflare-dev": "^0.2.2",
+	"@sveltejs/adapter-cloudflare": "^7.0.4",
 } as const;
 
 export type AvailableDependencies = keyof typeof dependencyVersionMap;
+
+export const ADDON_COMPATIBILITY = {
+	pwa: ["tanstack-router", "react-router", "solid", "next"],
+	tauri: ["tanstack-router", "react-router", "nuxt", "svelte", "solid"],
+	biome: [],
+	husky: [],
+	turborepo: [],
+	starlight: [],
+	none: [],
+} as const;
+
+// TODO: need to refactor this
+export const WEB_FRAMEWORKS: readonly Frontend[] = [
+	"tanstack-router",
+	"react-router",
+	"tanstack-start",
+	"next",
+	"nuxt",
+	"svelte",
+	"solid",
+];

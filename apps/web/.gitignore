@@ -19,7 +19,7 @@
 /.pnp
 .pnp.js
 npm-debug.log*
-yarn-debug.log*
+yarn-debug.log* 
 yarn-error.log*
 
 # others
@@ -27,4 +27,4 @@ yarn-error.log*
 .vercel
 next-env.d.ts
 
-/public/analytics-data.json
+analytics-data.json

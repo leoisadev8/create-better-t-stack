@@ -16,8 +16,10 @@ export const BackendSchema = z
 export type Backend = z.infer<typeof BackendSchema>;
 
 export const RuntimeSchema = z
-	.enum(["bun", "node", "none"])
-	.describe("Runtime environment");
+	.enum(["bun", "node", "workers", "none"])
+	.describe(
+		"Runtime environment (workers only available with hono backend and drizzle orm)",
+	);
 export type Runtime = z.infer<typeof RuntimeSchema>;
 
 export const FrontendSchema = z
@@ -58,6 +60,8 @@ export const DatabaseSetupSchema = z
 		"prisma-postgres",
 		"mongodb-atlas",
 		"supabase",
+		"d1",
+		"docker",
 		"none",
 	])
 	.describe("Database hosting setup");
@@ -89,6 +93,11 @@ export const ProjectNameSchema = z
 	.describe("Project name or path");
 export type ProjectName = z.infer<typeof ProjectNameSchema>;
 
+export const WebDeploySchema = z
+	.enum(["workers", "none"])
+	.describe("Web deployment");
+export type WebDeploy = z.infer<typeof WebDeploySchema>;
+
 export type CreateInput = {
 	projectName?: string;
 	yes?: boolean;
@@ -105,6 +114,15 @@ export type CreateInput = {
 	backend?: Backend;
 	runtime?: Runtime;
 	api?: API;
+	webDeploy?: WebDeploy;
+};
+
+export type AddInput = {
+	addons?: Addons[];
+	webDeploy?: WebDeploy;
+	projectDir?: string;
+	install?: boolean;
+	packageManager?: PackageManager;
 };
 
 export type CLIInput = CreateInput & {
@@ -128,6 +146,24 @@ export interface ProjectConfig {
 	install: boolean;
 	dbSetup: DatabaseSetup;
 	api: API;
+	webDeploy: WebDeploy;
+}
+
+export interface BetterTStackConfig {
+	version: string;
+	createdAt: string;
+	database: Database;
+	orm: ORM;
+	backend: Backend;
+	runtime: Runtime;
+	frontend: Frontend[];
+	addons: Addons[];
+	examples: Examples[];
+	auth: boolean;
+	packageManager: PackageManager;
+	dbSetup: DatabaseSetup;
+	api: API;
+	webDeploy: WebDeploy;
 }
 
 export type AvailablePackageManagers = "npm" | "pnpm" | "bun";

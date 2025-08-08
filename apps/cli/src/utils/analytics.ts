@@ -14,12 +14,13 @@ export async function trackProjectCreation(
 		flushInterval: 0,
 		privacyMode: true,
 		disableGeoip: true,
-		disabled: process.env.MODE !== "prod",
+		disabled: process.env.TELEMETRY !== "true",
 	});
 
 	try {
 		const sessionId = `cli_${crypto.randomUUID().replace(/-/g, "")}`;
 
+		// biome-ignore lint/correctness/noUnusedVariables: `projectName`, `projectDir`, and `relativePath` are not used in the event properties
 		const { projectName, projectDir, relativePath, ...safeConfig } = config;
 
 		posthog.capture({

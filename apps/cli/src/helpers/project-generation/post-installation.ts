@@ -1,11 +1,16 @@
 import { consola } from "consola";
 import pc from "picocolors";
-import type { Database, ORM, Runtime } from "../../types";
-import { getPackageExecutionCommand } from "../../utils/get-package-execution-command";
+import type {
+	Database,
+	DatabaseSetup,
+	ORM,
+	ProjectConfig,
+	Runtime,
+} from "../../types";
+import { getDockerStatus } from "../../utils/docker-utils";
+import { getPackageExecutionCommand } from "../../utils/package-runner";
 
-import type { ProjectConfig } from "../../types";
-
-export function displayPostInstallInstructions(
+export async function displayPostInstallInstructions(
 	config: ProjectConfig & { depsInstalled: boolean },
 ) {
 	const {
@@ -18,6 +23,8 @@ export function displayPostInstallInstructions(
 		runtime,
 		frontend,
 		backend,
+		dbSetup,
+		webDeploy,
 	} = config;
 
 	const isConvex = backend === "convex";
@@ -28,7 +35,7 @@ export function displayPostInstallInstructions(
 
 	const databaseInstructions =
 		!isConvex && database !== "none"
-			? getDatabaseInstructions(database, orm, runCmd, runtime)
+			? await getDatabaseInstructions(database, orm, runCmd, runtime, dbSetup)
 			: "";
 
 	const tauriInstructions = addons?.includes("tauri")
@@ -43,14 +50,14 @@ export function displayPostInstallInstructions(
 			? getNativeInstructions(isConvex)
 			: "";
 	const pwaInstructions =
-		addons?.includes("pwa") &&
-		(frontend?.includes("react-router") ||
-			frontend?.includes("tanstack-router"))
+		addons?.includes("pwa") && frontend?.includes("react-router")
 			? getPwaInstructions()
 			: "";
 	const starlightInstructions = addons?.includes("starlight")
 		? getStarlightInstructions(runCmd)
 		: "";
+	const workersDeployInstructions =
+		webDeploy === "workers" ? getWorkersDeployInstructions(runCmd) : "";
 
 	const hasWeb = frontend?.some((f) =>
 		[
@@ -91,9 +98,30 @@ export function displayPostInstallInstructions(
 		output += `${pc.cyan(`${stepCounter++}.`)} ${runCmd} dev:setup ${pc.dim(
 			"(this will guide you through Convex project setup)",
 		)}\n`;
+		output += `${pc.cyan(
+			`${stepCounter++}.`,
+		)} Copy environment variables from ${pc.white(
+			"packages/backend/.env.local",
+		)} \nto ${pc.white("apps/*/.env")}\n`;
 		output += `${pc.cyan(`${stepCounter++}.`)} ${runCmd} dev\n\n`;
 	} else {
-		output += `${pc.cyan(`${stepCounter++}.`)} ${runCmd} dev\n\n`;
+		if (runtime !== "workers") {
+			output += `${pc.cyan(`${stepCounter++}.`)} ${runCmd} dev\n`;
+		}
+
+		if (runtime === "workers") {
+			if (dbSetup === "d1") {
+				output += `${pc.yellow(
+					"IMPORTANT:",
+				)} Complete D1 database setup first (see Database commands below)\n`;
+			}
+			output += `${pc.cyan(`${stepCounter++}.`)} ${runCmd} dev\n`;
+			output += `${pc.cyan(
+				`${stepCounter++}.`,
+			)} cd apps/server && ${runCmd} run cf-typegen\n\n`;
+		} else {
+			output += "\n";
+		}
 	}
 
 	output += `${pc.bold("Your project will be available at:")}\n`;
@@ -119,6 +147,8 @@ export function displayPostInstallInstructions(
 	if (tauriInstructions) output += `\n${tauriInstructions.trim()}\n`;
 	if (lintingInstructions) output += `\n${lintingInstructions.trim()}\n`;
 	if (pwaInstructions) output += `\n${pwaInstructions.trim()}\n`;
+	if (workersDeployInstructions)
+		output += `\n${workersDeployInstructions.trim()}\n`;
 	if (starlightInstructions) output += `\n${starlightInstructions.trim()}\n`;
 
 	if (noOrmWarning) output += `\n${noOrmWarning.trim()}\n`;
@@ -164,13 +194,59 @@ function getLintingInstructions(runCmd?: string): string {
 	)} Format and lint fix: ${`${runCmd} check`}\n`;
 }
 
-function getDatabaseInstructions(
+async function getDatabaseInstructions(
 	database: Database,
 	orm?: ORM,
 	runCmd?: string,
 	runtime?: Runtime,
-): string {
+	dbSetup?: DatabaseSetup,
+): Promise<string> {
 	const instructions = [];
+
+	if (dbSetup === "docker") {
+		const dockerStatus = await getDockerStatus(database);
+
+		if (dockerStatus.message) {
+			instructions.push(dockerStatus.message);
+			instructions.push("");
+		}
+	}
+
+	if (runtime === "workers" && dbSetup === "d1") {
+		const packageManager = runCmd === "npm run" ? "npm" : runCmd || "npm";
+
+		instructions.push(
+			`${pc.cyan("1.")} Login to Cloudflare: ${pc.white(
+				`${packageManager} wrangler login`,
+			)}`,
+		);
+		instructions.push(
+			`${pc.cyan("2.")} Create D1 database: ${pc.white(
+				`${packageManager} wrangler d1 create your-database-name`,
+			)}`,
+		);
+		instructions.push(
+			`${pc.cyan(
+				"3.",
+			)} Update apps/server/wrangler.jsonc with database_id and database_name`,
+		);
+		instructions.push(
+			`${pc.cyan("4.")} Generate migrations: ${pc.white(
+				"cd apps/server && bun db:generate",
+			)}`,
+		);
+		instructions.push(
+			`${pc.cyan("5.")} Apply migrations locally: ${pc.white(
+				`${packageManager} wrangler d1 migrations apply YOUR_DB_NAME --local`,
+			)}`,
+		);
+		instructions.push(
+			`${pc.cyan("6.")} Apply migrations to production: ${pc.white(
+				`${packageManager} wrangler d1 migrations apply YOUR_DB_NAME`,
+			)}`,
+		);
+		instructions.push("");
+	}
 
 	if (orm === "prisma") {
 		if (database === "sqlite") {
@@ -189,17 +265,39 @@ function getDatabaseInstructions(
 				)} Prisma with Bun may require additional configuration. If you encounter errors,\nfollow the guidance provided in the error messages`,
 			);
 		}
-
+		if (database === "mongodb" && dbSetup === "docker") {
+			instructions.push(
+				`${pc.yellow(
+					"WARNING:",
+				)} Prisma + MongoDB + Docker combination may not work.`,
+			);
+		}
+		if (dbSetup === "docker") {
+			instructions.push(
+				`${pc.cyan("•")} Start docker container: ${`${runCmd} db:start`}`,
+			);
+		}
 		instructions.push(`${pc.cyan("•")} Apply schema: ${`${runCmd} db:push`}`);
 		instructions.push(`${pc.cyan("•")} Database UI: ${`${runCmd} db:studio`}`);
 	} else if (orm === "drizzle") {
+		if (dbSetup === "docker") {
+			instructions.push(
+				`${pc.cyan("•")} Start docker container: ${`${runCmd} db:start`}`,
+			);
+		}
 		instructions.push(`${pc.cyan("•")} Apply schema: ${`${runCmd} db:push`}`);
 		instructions.push(`${pc.cyan("•")} Database UI: ${`${runCmd} db:studio`}`);
-		if (database === "sqlite") {
+		if (database === "sqlite" && dbSetup !== "d1") {
 			instructions.push(
 				`${pc.cyan(
 					"•",
 				)} Start local DB (if needed): ${`cd apps/server && ${runCmd} db:local`}`,
+			);
+		}
+	} else if (orm === "mongoose") {
+		if (dbSetup === "docker") {
+			instructions.push(
+				`${pc.cyan("•")} Start docker container: ${`${runCmd} db:start`}`,
 			);
 		}
 	} else if (orm === "none") {
@@ -226,7 +324,7 @@ function getTauriInstructions(runCmd?: string): string {
 function getPwaInstructions(): string {
 	return `\n${pc.bold("PWA with React Router v7:")}\n${pc.yellow(
 		"NOTE:",
-	)} There is a known compatibility issue between VitePWA and React Router v7.\nSee: https://github.com/vite-pwa/vite-plugin-pwa/issues/809`;
+	)} There is a known compatibility issue between VitePWA \nand React Router v7.See: https://github.com/vite-pwa/vite-plugin-pwa/issues/809`;
 }
 
 function getStarlightInstructions(runCmd?: string): string {
@@ -247,4 +345,8 @@ function getBunWebNativeWarning(): string {
 	return `\n${pc.yellow(
 		"WARNING:",
 	)} 'bun' might cause issues with web + native apps in a monorepo. Use 'pnpm' if problems arise.`;
+}
+
+function getWorkersDeployInstructions(runCmd?: string): string {
+	return `\n${pc.bold("Deploy frontend to Cloudflare Workers:")}\n${pc.cyan("•")} Deploy: ${`cd apps/web && ${runCmd || "bun run"} deploy`}`;
 }

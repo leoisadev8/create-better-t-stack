@@ -3,15 +3,15 @@ import { spinner } from "@clack/prompts";
 import consola from "consola";
 import fs from "fs-extra";
 import pc from "picocolors";
+import type { ProjectConfig } from "../../types";
 import { addPackageDependency } from "../../utils/add-package-deps";
+import { setupCloudflareD1 } from "../database-providers/d1-setup";
+import { setupDockerCompose } from "../database-providers/docker-compose-setup";
 import { setupMongoDBAtlas } from "../database-providers/mongodb-atlas-setup";
+import { setupNeonPostgres } from "../database-providers/neon-setup";
 import { setupPrismaPostgres } from "../database-providers/prisma-postgres-setup";
 import { setupSupabase } from "../database-providers/supabase-setup";
 import { setupTurso } from "../database-providers/turso-setup";
-
-import { setupNeonPostgres } from "../database-providers/neon-setup";
-
-import type { ProjectConfig } from "../../types";
 
 export async function setupDatabase(config: ProjectConfig): Promise<void> {
 	const { database, orm, dbSetup, backend, projectDir } = config;
@@ -49,11 +49,19 @@ export async function setupDatabase(config: ProjectConfig): Promise<void> {
 					projectDir: serverDir,
 				});
 			} else if (database === "postgres") {
-				await addPackageDependency({
-					dependencies: ["drizzle-orm", "pg"],
-					devDependencies: ["drizzle-kit", "@types/pg"],
-					projectDir: serverDir,
-				});
+				if (dbSetup === "neon") {
+					await addPackageDependency({
+						dependencies: ["drizzle-orm", "@neondatabase/serverless"],
+						devDependencies: ["drizzle-kit"],
+						projectDir: serverDir,
+					});
+				} else {
+					await addPackageDependency({
+						dependencies: ["drizzle-orm", "pg"],
+						devDependencies: ["drizzle-kit", "@types/pg"],
+						projectDir: serverDir,
+					});
+				}
 			} else if (database === "mysql") {
 				await addPackageDependency({
 					dependencies: ["drizzle-orm", "mysql2"],
@@ -69,8 +77,12 @@ export async function setupDatabase(config: ProjectConfig): Promise<void> {
 			});
 		}
 
-		if (database === "sqlite" && dbSetup === "turso") {
+		if (dbSetup === "docker") {
+			await setupDockerCompose(config);
+		} else if (database === "sqlite" && dbSetup === "turso") {
 			await setupTurso(config);
+		} else if (database === "sqlite" && dbSetup === "d1") {
+			await setupCloudflareD1(config);
 		} else if (database === "postgres") {
 			if (orm === "prisma" && dbSetup === "prisma-postgres") {
 				await setupPrismaPostgres(config);

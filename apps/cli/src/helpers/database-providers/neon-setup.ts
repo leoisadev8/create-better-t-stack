@@ -5,10 +5,10 @@ import { execa } from "execa";
 import fs from "fs-extra";
 import pc from "picocolors";
 import type { PackageManager, ProjectConfig } from "../../types";
-import { getPackageExecutionCommand } from "../../utils/get-package-execution-command";
+import { getPackageExecutionCommand } from "../../utils/package-runner";
 import {
-	type EnvVariable,
 	addEnvVariablesToFile,
+	type EnvVariable,
 } from "../project-generation/env-setup";
 
 type NeonConfig = {

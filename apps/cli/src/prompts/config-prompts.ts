@@ -1,8 +1,8 @@
 import { cancel, group } from "@clack/prompts";
 import pc from "picocolors";
 import type {
-	API,
 	Addons,
+	API,
 	Backend,
 	Database,
 	DatabaseSetup,
@@ -12,6 +12,7 @@ import type {
 	PackageManager,
 	ProjectConfig,
 	Runtime,
+	WebDeploy,
 } from "../types";
 import { getAddonsChoice } from "./addons";
 import { getApiChoice } from "./api";
@@ -26,6 +27,7 @@ import { getinstallChoice } from "./install";
 import { getORMChoice } from "./orm";
 import { getPackageManagerChoice } from "./package-manager";
 import { getRuntimeChoice } from "./runtime";
+import { getDeploymentChoice } from "./web-deploy";
 
 type PromptGroupResults = {
 	frontend: Frontend[];
@@ -41,6 +43,7 @@ type PromptGroupResults = {
 	git: boolean;
 	packageManager: PackageManager;
 	install: boolean;
+	webDeploy: WebDeploy;
 };
 
 export async function gatherConfig(
@@ -57,13 +60,14 @@ export async function gatherConfig(
 			runtime: ({ results }) =>
 				getRuntimeChoice(flags.runtime, results.backend),
 			database: ({ results }) =>
-				getDatabaseChoice(flags.database, results.backend),
+				getDatabaseChoice(flags.database, results.backend, results.runtime),
 			orm: ({ results }) =>
 				getORMChoice(
 					flags.orm,
 					results.database !== "none",
 					results.database,
 					results.backend,
+					results.runtime,
 				),
 			api: ({ results }) =>
 				getApiChoice(flags.api, results.frontend, results.backend),
@@ -84,6 +88,14 @@ export async function gatherConfig(
 					flags.dbSetup,
 					results.orm,
 					results.backend,
+					results.runtime,
+				),
+			webDeploy: ({ results }) =>
+				getDeploymentChoice(
+					flags.webDeploy,
+					results.runtime,
+					results.backend,
+					results.frontend,
 				),
 			git: () => getGitChoice(flags.git),
 			packageManager: () => getPackageManagerChoice(flags.packageManager),
@@ -105,6 +117,7 @@ export async function gatherConfig(
 		result.auth = false;
 		result.dbSetup = "none";
 		result.examples = ["todo"];
+		result.webDeploy = "none";
 	}
 
 	if (result.backend === "none") {
@@ -115,6 +128,7 @@ export async function gatherConfig(
 		result.auth = false;
 		result.dbSetup = "none";
 		result.examples = [];
+		result.webDeploy = "none";
 	}
 
 	return {
@@ -134,5 +148,6 @@ export async function gatherConfig(
 		install: result.install,
 		dbSetup: result.dbSetup,
 		api: result.api,
+		webDeploy: result.webDeploy,
 	};
 }

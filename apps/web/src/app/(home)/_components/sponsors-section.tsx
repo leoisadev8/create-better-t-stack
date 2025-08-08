@@ -1,7 +1,7 @@
-import type { Sponsor } from "@/lib/types";
 import { Github, Globe, Heart, Terminal } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import type { Sponsor } from "@/lib/types";
 
 export default function SponsorsSection() {
 	const [sponsors, setSponsors] = useState<Sponsor[]>([]);
@@ -15,7 +15,32 @@ export default function SponsorsSection() {
 				return res.json();
 			})
 			.then((data) => {
-				setSponsors(Array.isArray(data) ? data : []);
+				const sponsorsData = Array.isArray(data) ? data : [];
+
+				const sortedSponsors = sponsorsData.sort((a, b) => {
+					const getAmount = (sponsor: Sponsor) => {
+						if (!sponsor.isOneTime && sponsor.monthlyDollars > 0) {
+							return sponsor.monthlyDollars;
+						}
+
+						if (sponsor.tierName) {
+							const match = sponsor.tierName.match(/\$(\d+(?:\.\d+)?)/);
+							return match ? Number.parseFloat(match[1]) : 0;
+						}
+
+						return 0;
+					};
+
+					const aIsMonthly = !a.isOneTime;
+					const bIsMonthly = !b.isOneTime;
+
+					if (aIsMonthly && !bIsMonthly) return -1;
+					if (!aIsMonthly && bIsMonthly) return 1;
+
+					return getAmount(b) - getAmount(a);
+				});
+
+				setSponsors(sortedSponsors);
 				setLoadingSponsors(false);
 			})
 			.catch(() => {

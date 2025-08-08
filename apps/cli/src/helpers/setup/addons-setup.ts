@@ -1,13 +1,14 @@
 import path from "node:path";
+import { log } from "@clack/prompts";
 import fs from "fs-extra";
-import type { Frontend } from "../../types";
+import pc from "picocolors";
+import type { Frontend, ProjectConfig } from "../../types";
 import { addPackageDependency } from "../../utils/add-package-deps";
 import { setupStarlight } from "./starlight-setup";
 import { setupTauri } from "./tauri-setup";
+import { addPwaToViteConfig } from "./vite-pwa-setup";
 
-import type { ProjectConfig } from "../../types";
-
-export async function setupAddons(config: ProjectConfig) {
+export async function setupAddons(config: ProjectConfig, isAddCommand = false) {
 	const { addons, frontend, projectDir } = config;
 	const hasReactWebFrontend =
 		frontend.includes("react-router") ||
@@ -23,6 +24,20 @@ export async function setupAddons(config: ProjectConfig) {
 			devDependencies: ["turbo"],
 			projectDir,
 		});
+
+		if (isAddCommand) {
+			log.info(`${pc.yellow("Update your package.json scripts:")}
+
+${pc.dim("Replace:")} ${pc.yellow('"pnpm -r dev"')} ${pc.dim("→")} ${pc.green(
+				'"turbo dev"',
+			)}
+${pc.dim("Replace:")} ${pc.yellow('"pnpm --filter web dev"')} ${pc.dim(
+				"→",
+			)} ${pc.green('"turbo -F web dev"')}
+
+${pc.cyan("Docs:")} ${pc.underline("https://turborepo.com/docs")}
+		`);
+		}
 	}
 
 	if (addons.includes("pwa") && (hasReactWebFrontend || hasSolidFrontend)) {
@@ -134,5 +149,11 @@ async function setupPwa(projectDir: string, frontends: Frontend[]) {
 		};
 
 		await fs.writeJson(clientPackageJsonPath, packageJson, { spaces: 2 });
+	}
+
+	const viteConfigTs = path.join(clientPackageDir, "vite.config.ts");
+
+	if (await fs.pathExists(viteConfigTs)) {
+		await addPwaToViteConfig(viteConfigTs, path.basename(projectDir));
 	}
 }

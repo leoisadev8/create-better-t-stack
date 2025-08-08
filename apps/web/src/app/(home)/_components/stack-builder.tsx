@@ -1,23 +1,5 @@
 "use client";
 
-import { ThemeToggle } from "@/components/theme-toggle";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-	DEFAULT_STACK,
-	PRESET_TEMPLATES,
-	type StackState,
-	TECH_OPTIONS,
-	isStackDefault,
-} from "@/lib/constant";
-import { stackParsers, stackQueryStatesOptions } from "@/lib/stack-url-state";
-import { cn } from "@/lib/utils";
-import discordLogo from "@/public/icon/discord.svg";
 import {
 	Check,
 	ClipboardCopy,
@@ -31,13 +13,31 @@ import {
 	Terminal,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useQueryStates } from "nuqs";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+	DEFAULT_STACK,
+	isStackDefault,
+	PRESET_TEMPLATES,
+	type StackState,
+	TECH_OPTIONS,
+} from "@/lib/constant";
+import { stackParsers, stackQueryStatesOptions } from "@/lib/stack-url-state";
+import { cn } from "@/lib/utils";
+import discordLogo from "@/public/icon/discord.svg";
 
 const validateProjectName = (name: string): string | undefined => {
 	const INVALID_CHARS = ["<", ">", ":", '"', "|", "?", "*"];
@@ -73,6 +73,7 @@ const CATEGORY_ORDER: Array<keyof typeof TECH_OPTIONS> = [
 	"database",
 	"orm",
 	"dbSetup",
+	"webDeploy",
 	"auth",
 	"packageManager",
 	"addons",
@@ -80,23 +81,6 @@ const CATEGORY_ORDER: Array<keyof typeof TECH_OPTIONS> = [
 	"git",
 	"install",
 ];
-
-const hasWebFrontend = (webFrontend: string[]) =>
-	webFrontend.some((f) =>
-		[
-			"tanstack-router",
-			"react-router",
-			"tanstack-start",
-			"next",
-			"nuxt",
-			"svelte",
-			"solid",
-		].includes(f),
-	);
-
-const checkHasNativeFrontend = (nativeFrontend: string[]) =>
-	nativeFrontend.includes("native-nativewind") ||
-	nativeFrontend.includes("native-unistyles");
 
 const hasPWACompatibleFrontend = (webFrontend: string[]) =>
 	webFrontend.some((f) =>
@@ -141,6 +125,7 @@ const getBadgeColors = (category: string): string => {
 		case "packageManager":
 			return "border-orange-300 bg-orange-100 text-orange-800 dark:border-orange-700/30 dark:bg-orange-900/30 dark:text-orange-300";
 		case "git":
+		case "webDeploy":
 		case "install":
 			return "border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400";
 		default:
@@ -550,6 +535,176 @@ const analyzeStackCompatibility = (stack: StackState): CompatibilityResult => {
 							"Database set to 'PostgreSQL' (required by Supabase setup)",
 					});
 				}
+			} else if (nextStack.dbSetup === "d1") {
+				if (nextStack.database !== "sqlite") {
+					notes.dbSetup.notes.push(
+						"Cloudflare D1 requires SQLite. It will be selected.",
+					);
+					notes.database.notes.push(
+						"Cloudflare D1 DB setup requires SQLite. It will be selected.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.database.hasIssue = true;
+					nextStack.database = "sqlite";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message: "Database set to 'SQLite' (required by Cloudflare D1)",
+					});
+				}
+				if (nextStack.runtime !== "workers") {
+					notes.dbSetup.notes.push(
+						"Cloudflare D1 requires Cloudflare Workers runtime. It will be selected.",
+					);
+					notes.runtime.notes.push(
+						"Cloudflare D1 DB setup requires Cloudflare Workers runtime. It will be selected.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.runtime.hasIssue = true;
+					nextStack.runtime = "workers";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message: "Runtime set to 'Cloudflare Workers' (required by D1)",
+					});
+				}
+				if (nextStack.orm !== "drizzle") {
+					notes.dbSetup.notes.push(
+						"Cloudflare D1 requires Drizzle ORM. It will be selected.",
+					);
+					notes.orm.notes.push(
+						"Cloudflare D1 DB setup requires Drizzle ORM. It will be selected.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.orm.hasIssue = true;
+					nextStack.orm = "drizzle";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message: "ORM set to 'Drizzle' (required by Cloudflare D1)",
+					});
+				}
+				if (nextStack.backend !== "hono") {
+					notes.dbSetup.notes.push(
+						"Cloudflare D1 requires Hono backend. It will be selected.",
+					);
+					notes.backend.notes.push(
+						"Cloudflare D1 DB setup requires Hono backend. It will be selected.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.backend.hasIssue = true;
+					nextStack.backend = "hono";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message: "Backend set to 'Hono' (required by Cloudflare D1)",
+					});
+				}
+			} else if (nextStack.dbSetup === "docker") {
+				if (nextStack.database === "sqlite") {
+					notes.dbSetup.notes.push(
+						"Docker setup is not needed for SQLite. It will be set to 'Basic Setup'.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.database.hasIssue = true;
+					nextStack.dbSetup = "none";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message:
+							"DB Setup set to 'Basic Setup' (SQLite doesn't need Docker)",
+					});
+				}
+
+				if (nextStack.runtime === "workers") {
+					notes.dbSetup.notes.push(
+						"Docker setup is not compatible with Cloudflare Workers runtime. Bun runtime will be selected.",
+					);
+					notes.runtime.notes.push(
+						"Cloudflare Workers runtime does not support Docker setup. Bun runtime will be selected.",
+					);
+					notes.dbSetup.hasIssue = true;
+					notes.runtime.hasIssue = true;
+					nextStack.runtime = "bun";
+					changed = true;
+					changes.push({
+						category: "dbSetup",
+						message:
+							"Runtime set to 'Bun' (Workers not compatible with Docker)",
+					});
+				}
+			}
+
+			if (nextStack.runtime === "workers") {
+				if (nextStack.backend !== "hono") {
+					notes.runtime.notes.push(
+						"Cloudflare Workers runtime requires Hono backend. Hono will be selected.",
+					);
+					notes.backend.notes.push(
+						"Cloudflare Workers runtime requires Hono backend. It will be selected.",
+					);
+					notes.runtime.hasIssue = true;
+					notes.backend.hasIssue = true;
+					nextStack.backend = "hono";
+					changed = true;
+					changes.push({
+						category: "runtime",
+						message: "Backend set to 'Hono' (required by Cloudflare Workers)",
+					});
+				}
+
+				if (nextStack.orm !== "drizzle" && nextStack.orm !== "none") {
+					notes.runtime.notes.push(
+						"Cloudflare Workers runtime requires Drizzle ORM or no ORM. Drizzle will be selected.",
+					);
+					notes.orm.notes.push(
+						"Cloudflare Workers runtime requires Drizzle ORM or no ORM. Drizzle will be selected.",
+					);
+					notes.runtime.hasIssue = true;
+					notes.orm.hasIssue = true;
+					nextStack.orm = "drizzle";
+					changed = true;
+					changes.push({
+						category: "runtime",
+						message: "ORM set to 'Drizzle' (required by Cloudflare Workers)",
+					});
+				}
+
+				if (nextStack.database === "mongodb") {
+					notes.runtime.notes.push(
+						"Cloudflare Workers runtime is not compatible with MongoDB. SQLite will be selected.",
+					);
+					notes.database.notes.push(
+						"MongoDB is not compatible with Cloudflare Workers runtime. SQLite will be selected.",
+					);
+					notes.runtime.hasIssue = true;
+					notes.database.hasIssue = true;
+					nextStack.database = "sqlite";
+					changed = true;
+					changes.push({
+						category: "runtime",
+						message:
+							"Database set to 'SQLite' (MongoDB not compatible with Workers)",
+					});
+				}
+
+				if (nextStack.dbSetup === "docker") {
+					notes.runtime.notes.push(
+						"Cloudflare Workers runtime does not support Docker setup. D1 will be selected.",
+					);
+					notes.dbSetup.notes.push(
+						"Docker setup is not compatible with Cloudflare Workers runtime. D1 will be selected.",
+					);
+					notes.runtime.hasIssue = true;
+					notes.dbSetup.hasIssue = true;
+					nextStack.dbSetup = "d1";
+					changed = true;
+					changes.push({
+						category: "runtime",
+						message:
+							"DB Setup set to 'D1' (Docker not compatible with Workers)",
+					});
+				}
 			}
 
 			const isNuxt = nextStack.webFrontend.includes("nuxt");
@@ -627,7 +782,6 @@ const analyzeStackCompatibility = (stack: StackState): CompatibilityResult => {
 
 			const incompatibleExamples: string[] = [];
 
-			// Note: Examples are now supported with Native-only frontends
 			if (
 				nextStack.database === "none" &&
 				nextStack.examples.includes("todo")
@@ -702,33 +856,28 @@ const analyzeStackCompatibility = (stack: StackState): CompatibilityResult => {
 		}
 	}
 
+	const webFrontendsSelected = nextStack.webFrontend.some((f) => f !== "none");
+	if (!webFrontendsSelected && nextStack.webDeploy !== "none") {
+		notes.webDeploy.notes.push(
+			"Web deployment requires a web frontend. It will be disabled.",
+		);
+		notes.webFrontend.notes.push(
+			"No web frontend selected: Deployment has been disabled.",
+		);
+		notes.webDeploy.hasIssue = true;
+		notes.webFrontend.hasIssue = true;
+		nextStack.webDeploy = "none";
+		changed = true;
+		changes.push({
+			category: "webDeploy",
+			message: "Web deployment set to 'none' (requires web frontend)",
+		});
+	}
+
 	return {
 		adjustedStack: changed ? nextStack : null,
 		notes,
 		changes,
-	};
-};
-
-const getCompatibilityRules = (stack: StackState) => {
-	const isConvex = stack.backend === "convex";
-	const isBackendNone = stack.backend === "none";
-	const hasWebFrontendSelected = hasWebFrontend(stack.webFrontend);
-	const hasNativeFrontend = checkHasNativeFrontend(stack.nativeFrontend);
-	const hasSolid = stack.webFrontend.includes("solid");
-	const hasNuxt = stack.webFrontend.includes("nuxt");
-	const hasSvelte = stack.webFrontend.includes("svelte");
-
-	return {
-		isConvex,
-		isBackendNone,
-		hasWebFrontend: hasWebFrontendSelected,
-		hasNativeFrontend,
-		hasPWACompatible: hasPWACompatibleFrontend(stack.webFrontend),
-		hasTauriCompatible: hasTauriCompatibleFrontend(stack.webFrontend),
-		hasNuxtOrSvelteOrSolid: hasNuxt || hasSvelte || hasSolid,
-		hasSolid,
-		hasNuxt,
-		hasSvelte,
 	};
 };
 
@@ -781,7 +930,21 @@ const generateCommand = (stackState: StackState): string => {
 		if (!checkDefault("api", stackState.api)) {
 			flags.push(`--api ${stackState.api}`);
 		}
-		if (!checkDefault("database", stackState.database)) {
+
+		const requiresExplicitDatabase = [
+			"d1",
+			"turso",
+			"neon",
+			"supabase",
+			"prisma-postgres",
+			"mongodb-atlas",
+			"docker",
+		].includes(stackState.dbSetup);
+
+		if (
+			!checkDefault("database", stackState.database) ||
+			requiresExplicitDatabase
+		) {
 			flags.push(`--database ${stackState.database}`);
 		}
 		if (!checkDefault("orm", stackState.orm)) {
@@ -806,6 +969,13 @@ const generateCommand = (stackState: StackState): string => {
 		if (stackState.git === "false" && DEFAULT_STACK.git === "true") {
 			flags.push("--no-git");
 		}
+	}
+
+	if (
+		stackState.webDeploy &&
+		!checkDefault("webDeploy", stackState.webDeploy)
+	) {
+		flags.push(`--web-deploy ${stackState.webDeploy}`);
 	}
 
 	if (!checkDefault("install", stackState.install)) {
@@ -862,8 +1032,6 @@ const StackBuilder = () => {
 		() => analyzeStackCompatibility(stack),
 		[stack],
 	);
-
-	const rules = useMemo(() => getCompatibilityRules(stack), [stack]);
 
 	const getRandomStack = () => {
 		const randomStack: Partial<StackState> = {};
@@ -973,342 +1141,6 @@ const StackBuilder = () => {
 		}
 	};
 
-	const disabledReasons = useMemo(() => {
-		const reasons = new Map<string, string>();
-		const addRule = (category: string, techId: string, reason: string) => {
-			reasons.set(`${category}-${techId}`, reason);
-		};
-
-		for (const category of CATEGORY_ORDER) {
-			const options = TECH_OPTIONS[category as keyof typeof TECH_OPTIONS] || [];
-			const catKey = category as keyof StackState;
-
-			for (const tech of options) {
-				const techId = tech.id;
-
-				if (rules.isConvex) {
-					const convexDefaults: Record<string, string | string[]> = {
-						runtime: "none",
-						database: "none",
-						orm: "none",
-						api: "none",
-						auth: "false",
-						dbSetup: "none",
-						examples: ["todo"],
-					};
-
-					if (
-						["runtime", "database", "orm", "api", "auth", "dbSetup"].includes(
-							catKey,
-						)
-					) {
-						const requiredValue = convexDefaults[catKey];
-						if (catKey === "auth") {
-							if (techId === "true" && requiredValue === "false") {
-								addRule(
-									category,
-									techId,
-									"Disabled: Convex backend requires Authentication to be disabled.",
-								);
-							}
-						} else if (String(techId) !== String(requiredValue)) {
-							addRule(
-								category,
-								techId,
-								`Disabled: Convex backend requires ${getCategoryDisplayName(
-									catKey,
-								)} to be '${requiredValue}'.`,
-							);
-						}
-					} else if (catKey === "examples") {
-						const requiredExamples = convexDefaults.examples as string[];
-						if (
-							!requiredExamples.includes(techId) &&
-							techId !== "none" &&
-							options.find((o) => o.id === techId)
-						) {
-							addRule(
-								category,
-								techId,
-								"Disabled: Convex backend only supports the 'Todo' example.",
-							);
-						}
-					} else if (
-						catKey === "webFrontend" &&
-						(techId === "nuxt" || techId === "solid")
-					) {
-						addRule(
-							category,
-							techId,
-							`Disabled: Convex backend is not compatible with ${tech.name}.`,
-						);
-					}
-					continue;
-				}
-
-				if (rules.isBackendNone) {
-					if (catKey === "auth" && techId === "true") {
-						addRule(
-							category,
-							techId,
-							"Disabled: Authentication requires a backend.",
-						);
-					} else if (
-						["database", "orm", "api", "runtime", "dbSetup"].includes(catKey) &&
-						techId !== "none"
-					) {
-						addRule(
-							category,
-							techId,
-							`Disabled: ${getCategoryDisplayName(
-								catKey,
-							)} cannot be selected when 'No Backend' is chosen (will be 'None').`,
-						);
-					} else if (catKey === "examples" && techId !== "none") {
-						addRule(
-							category,
-							techId,
-							"Disabled: Examples cannot be selected when 'No Backend' is chosen.",
-						);
-					}
-				}
-
-				if (catKey === "runtime" && techId === "none" && !rules.isConvex) {
-					addRule(
-						category,
-						techId,
-						"Disabled: Runtime 'None' is only available with Convex backend.",
-					);
-				}
-
-				if (catKey === "api") {
-					if (techId !== "none" && (rules.isConvex || rules.isBackendNone)) {
-						addRule(
-							category,
-							techId,
-							rules.isConvex
-								? "Disabled: Convex backend requires API to be 'None'."
-								: "Disabled: No backend requires API to be 'None'.",
-						);
-					}
-					if (techId === "trpc" && rules.hasNuxtOrSvelteOrSolid) {
-						const frontendName = rules.hasNuxt
-							? "Nuxt"
-							: rules.hasSvelte
-								? "Svelte"
-								: "Solid";
-						addRule(
-							category,
-							techId,
-							`Disabled: tRPC is not supported with ${frontendName}. oRPC will be automatically selected.`,
-						);
-					}
-				}
-
-				if (catKey === "orm") {
-					if (
-						stack.database === "none" &&
-						techId !== "none" &&
-						!rules.isConvex
-					) {
-						addRule(
-							category,
-							techId,
-							"Disabled: ORM requires a database. Select a database or 'No ORM'.",
-						);
-					} else if (stack.database === "mongodb") {
-						if (
-							techId !== "prisma" &&
-							techId !== "mongoose" &&
-							techId !== "none"
-						) {
-							addRule(
-								category,
-								techId,
-								"Disabled: With MongoDB, use Prisma, Mongoose, or No ORM.",
-							);
-						}
-					} else if (["sqlite", "postgres", "mysql"].includes(stack.database)) {
-						if (techId === "mongoose") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Mongoose ORM is for MongoDB. Choose a different ORM for relational databases.",
-							);
-						}
-					}
-
-					if (stack.dbSetup === "turso" && techId !== "drizzle") {
-						addRule(
-							category,
-							techId,
-							"Disabled: Turso DB setup requires Drizzle ORM.",
-						);
-					} else if (
-						stack.dbSetup === "prisma-postgres" &&
-						techId !== "prisma"
-					) {
-						addRule(
-							category,
-							techId,
-							"Disabled: Prisma PostgreSQL setup requires Prisma ORM.",
-						);
-					} else if (
-						stack.dbSetup === "mongodb-atlas" &&
-						techId !== "prisma" &&
-						techId !== "mongoose"
-					) {
-						addRule(
-							category,
-							techId,
-							"Disabled: MongoDB Atlas setup requires Prisma or Mongoose ORM.",
-						);
-					}
-				}
-
-				if (catKey === "dbSetup" && techId !== "none") {
-					if (stack.database === "none" && !rules.isBackendNone) {
-						addRule(
-							category,
-							techId,
-							"Disabled: A database must be selected to use this DB setup. Select 'Basic Setup' or a database first.",
-						);
-					}
-
-					if (techId === "turso") {
-						if (stack.database !== "sqlite" && stack.database !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Turso requires SQLite. (Will auto-select if chosen)",
-							);
-						}
-						if (stack.orm !== "drizzle" && stack.orm !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Turso requires Drizzle ORM. (Will auto-select if chosen)",
-							);
-						}
-					} else if (techId === "prisma-postgres") {
-						if (stack.database !== "postgres" && stack.database !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Requires PostgreSQL. (Will auto-select if chosen)",
-							);
-						}
-						if (stack.orm !== "prisma" && stack.orm !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Requires Prisma ORM. (Will auto-select if chosen)",
-							);
-						}
-					} else if (techId === "mongodb-atlas") {
-						if (stack.database !== "mongodb" && stack.database !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Requires MongoDB. (Will auto-select if chosen)",
-							);
-						}
-						if (
-							stack.orm !== "prisma" &&
-							stack.orm !== "mongoose" &&
-							stack.orm !== "none"
-						) {
-							addRule(
-								category,
-								techId,
-								"Disabled: Requires Prisma or Mongoose ORM. (Will auto-select Prisma if chosen)",
-							);
-						}
-					} else if (techId === "neon") {
-						if (stack.database !== "postgres" && stack.database !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Neon requires PostgreSQL. (Will auto-select if chosen)",
-							);
-						}
-					} else if (techId === "supabase") {
-						if (stack.database !== "postgres" && stack.database !== "none") {
-							addRule(
-								category,
-								techId,
-								"Disabled: Supabase (local) requires PostgreSQL. (Will auto-select if chosen)",
-							);
-						}
-					}
-				}
-
-				if (catKey === "auth" && techId === "true") {
-					if (stack.database === "none" && !rules.isBackendNone) {
-						addRule(
-							category,
-							techId,
-							"Disabled: Authentication requires a database.",
-						);
-					}
-				}
-
-				if (catKey === "addons") {
-					if (techId === "pwa" && !rules.hasPWACompatible) {
-						addRule(
-							category,
-							techId,
-							"Disabled: PWA addon requires a compatible frontend (e.g., TanStack Router, Solid).",
-						);
-					}
-					if (techId === "tauri" && !rules.hasTauriCompatible) {
-						addRule(
-							category,
-							techId,
-							"Disabled: Tauri addon requires a compatible frontend (e.g., TanStack Router, Nuxt, Svelte, Solid, Next.js).",
-						);
-					}
-				}
-
-				if (catKey === "examples" && techId !== "none") {
-					if (stack.api === "none" && !rules.isConvex && !rules.isBackendNone) {
-						addRule(
-							category,
-							techId,
-							"Disabled: Examples require an API. Cannot be selected when API is 'None'.",
-						);
-					}
-					if (
-						stack.database === "none" &&
-						techId === "todo" &&
-						!rules.isConvex
-					) {
-						addRule(
-							category,
-							techId,
-							"Disabled: The 'Todo' example requires a database.",
-						);
-					}
-					if (stack.backend === "elysia" && techId === "ai") {
-						addRule(
-							category,
-							techId,
-							"Disabled: The 'AI' example is not compatible with an Elysia backend.",
-						);
-					}
-					if (rules.hasSolid && techId === "ai") {
-						addRule(
-							category,
-							techId,
-							"Disabled: The 'AI' example is not compatible with a Solid frontend.",
-						);
-					}
-				}
-			}
-		}
-		return reasons;
-	}, [stack, rules]);
-
 	const selectedBadges = (() => {
 		const badges: React.ReactNode[] = [];
 		for (const category of CATEGORY_ORDER) {
@@ -1402,6 +1234,20 @@ const StackBuilder = () => {
 	useEffect(() => {
 		if (compatibilityAnalysis.adjustedStack) {
 			if (compatibilityAnalysis.changes.length > 0) {
+				if (compatibilityAnalysis.changes.length === 1) {
+					toast.info(compatibilityAnalysis.changes[0].message, {
+						duration: 4000,
+					});
+				} else if (compatibilityAnalysis.changes.length > 1) {
+					const message = `${
+						compatibilityAnalysis.changes.length
+					} compatibility adjustments made:\n${compatibilityAnalysis.changes
+						.map((c) => `• ${c.message}`)
+						.join("\n")}`;
+					toast.info(message, {
+						duration: 5000,
+					});
+				}
 			}
 			setLastChanges(compatibilityAnalysis.changes);
 			setStack(compatibilityAnalysis.adjustedStack);
@@ -1548,6 +1394,63 @@ const StackBuilder = () => {
 		}
 	};
 
+	const isOptionCompatible = (
+		currentStack: StackState,
+		category: keyof typeof TECH_OPTIONS,
+		optionId: string,
+	): boolean => {
+		const simulatedStack: StackState = JSON.parse(JSON.stringify(currentStack));
+
+		const updateArrayCategory = (arr: string[], cat: string): string[] => {
+			const isAlreadySelected = arr.includes(optionId);
+
+			if (cat === "webFrontend" || cat === "nativeFrontend") {
+				if (isAlreadySelected) {
+					return optionId === "none" ? arr : ["none"];
+				}
+				if (optionId === "none") return ["none"];
+				return [optionId];
+			}
+
+			const next: string[] = isAlreadySelected
+				? arr.filter((id) => id !== optionId)
+				: [...arr.filter((id) => id !== "none"), optionId];
+
+			if (next.length === 0) return ["none"];
+			return [...new Set(next)];
+		};
+
+		if (
+			category === "webFrontend" ||
+			category === "nativeFrontend" ||
+			category === "addons" ||
+			category === "examples"
+		) {
+			const currentArr = Array.isArray(simulatedStack[category])
+				? [...(simulatedStack[category] as string[])]
+				: [];
+			(simulatedStack[category] as string[]) = updateArrayCategory(
+				currentArr,
+				category,
+			);
+		} else {
+			(simulatedStack[category] as string) = optionId;
+		}
+
+		const { adjustedStack } = analyzeStackCompatibility(simulatedStack);
+		const finalStack = adjustedStack ?? simulatedStack;
+
+		if (
+			category === "webFrontend" ||
+			category === "nativeFrontend" ||
+			category === "addons" ||
+			category === "examples"
+		) {
+			return (finalStack[category] as string[]).includes(optionId);
+		}
+		return finalStack[category] === optionId;
+	};
+
 	return (
 		<TooltipProvider>
 			<div
@@ -1654,7 +1557,6 @@ const StackBuilder = () => {
 									</button>
 								)}
 								<button
-									id="save-stack-button"
 									type="button"
 									onClick={saveCurrentStack}
 									className="flex items-center gap-1 rounded border border-border bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted"
@@ -1804,36 +1706,27 @@ const StackBuilder = () => {
 													isSelected = currentValue === tech.id;
 												}
 
-												const disabledReason = disabledReasons.get(
-													`${categoryKey}-${tech.id}`,
+												const isDisabled = !isOptionCompatible(
+													stack,
+													categoryKey as keyof typeof TECH_OPTIONS,
+													tech.id,
 												);
-												const isDisabled = !!disabledReason;
 
 												return (
 													<Tooltip key={tech.id} delayDuration={100}>
 														<TooltipTrigger asChild>
 															<motion.div
 																className={cn(
-																	"relative rounded border p-2 transition-all",
-																	isDisabled && !isSelected
-																		? "cursor-not-allowed opacity-60"
-																		: "cursor-pointer",
+																	"relative cursor-pointer rounded border p-2 transition-all",
 																	isSelected
 																		? "border-primary bg-primary/10"
-																		: `border-border ${
-																				!isDisabled
-																					? "hover:border-muted hover:bg-muted"
-																					: ""
-																			}`,
+																		: isDisabled
+																			? "border-destructive/30 bg-destructive/5 opacity-50 hover:opacity-75"
+																			: "border-border hover:border-muted hover:bg-muted",
 																)}
-																whileHover={
-																	!isDisabled ? { scale: 1.02 } : undefined
-																}
-																whileTap={
-																	!isDisabled ? { scale: 0.98 } : undefined
-																}
+																whileHover={{ scale: 1.02 }}
+																whileTap={{ scale: 0.98 }}
 																onClick={() =>
-																	!isDisabled &&
 																	handleTechSelect(
 																		categoryKey as keyof typeof TECH_OPTIONS,
 																		tech.id,
@@ -1862,27 +1755,19 @@ const StackBuilder = () => {
 																					{tech.name}
 																				</span>
 																			</div>
-																			{isDisabled && !isSelected && (
-																				<InfoIcon className="ml-2 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-																			)}
 																		</div>
 																		<p className="mt-0.5 text-muted-foreground text-xs">
 																			{tech.description}
 																		</p>
 																	</div>
 																</div>
-																{tech.default && !isSelected && !isDisabled && (
+																{tech.default && !isSelected && (
 																	<span className="absolute top-1 right-1 ml-2 flex-shrink-0 rounded bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
 																		Default
 																	</span>
 																)}
 															</motion.div>
 														</TooltipTrigger>
-														{isDisabled && disabledReason && (
-															<TooltipContent side="top" align="center">
-																<p>{disabledReason}</p>
-															</TooltipContent>
-														)}
 													</Tooltip>
 												);
 											})}

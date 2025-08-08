@@ -42,7 +42,7 @@ export const TECH_OPTIONS = {
 		},
 		{
 			id: "tanstack-start",
-			name: "TanStack Start (devinxi)",
+			name: "TanStack Start (vite)",
 			description:
 				"Full-stack React and Solid framework powered by TanStack Router",
 			icon: "/icon/tanstack.svg",
@@ -131,6 +131,20 @@ export const TECH_OPTIONS = {
 			description: "JavaScript runtime environment",
 			icon: "/icon/node.svg",
 			color: "from-green-400 to-green-600",
+		},
+		{
+			id: "workers",
+			name: "Cloudflare Workers",
+			description: "Serverless runtime for the edge",
+			icon: "/icon/workers.svg",
+			color: "from-orange-400 to-orange-600",
+		},
+		{
+			id: "none",
+			name: "No Runtime",
+			description: "No specific runtime",
+			icon: "",
+			color: "from-gray-400 to-gray-600",
 		},
 	],
 	backend: [
@@ -263,6 +277,13 @@ export const TECH_OPTIONS = {
 			color: "from-pink-400 to-pink-600",
 		},
 		{
+			id: "d1",
+			name: "Cloudflare D1",
+			description: "Serverless SQLite database on Cloudflare Workers",
+			icon: "/icon/workers.svg",
+			color: "from-orange-400 to-orange-600",
+		},
+		{
 			id: "neon",
 			name: "Neon Postgres",
 			description: "Serverless PostgreSQL with Neon",
@@ -291,9 +312,33 @@ export const TECH_OPTIONS = {
 			color: "from-emerald-400 to-emerald-600",
 		},
 		{
+			id: "docker",
+			name: "Docker",
+			description: "Local database with Docker Compose",
+			icon: "/icon/docker.svg",
+			color: "from-blue-500 to-blue-700",
+		},
+		{
 			id: "none",
 			name: "Basic Setup",
 			description: "No cloud DB integration",
+			icon: "",
+			color: "from-gray-400 to-gray-600",
+			default: true,
+		},
+	],
+	webDeploy: [
+		{
+			id: "workers",
+			name: "Cloudflare Workers",
+			description: "Deploy to Cloudflare Workers",
+			icon: "/icon/workers.svg",
+			color: "from-orange-400 to-orange-600",
+		},
+		{
+			id: "none",
+			name: "No Deployment",
+			description: "Skip deployment configuration",
 			icon: "",
 			color: "from-gray-400 to-gray-600",
 			default: true,
@@ -514,17 +559,17 @@ export const PRESET_TEMPLATES = [
 	{
 		id: "api-only",
 		name: "API Only",
-		description: "Backend API with Hono and PostgreSQL",
+		description: "Backend API with Hono and Sqlite",
 		stack: {
 			projectName: "my-better-t-app",
 			webFrontend: ["none"],
 			nativeFrontend: ["none"],
 			runtime: "bun",
 			backend: "hono",
-			database: "postgres",
+			database: "sqlite",
 			orm: "drizzle",
 			dbSetup: "none",
-			auth: "false",
+			auth: "true",
 			packageManager: "bun",
 			addons: ["turborepo"],
 			examples: [],
@@ -573,6 +618,7 @@ export type StackState = {
 	git: string;
 	install: string;
 	api: string;
+	webDeploy: string;
 };
 
 export const DEFAULT_STACK: StackState = {
@@ -591,6 +637,7 @@ export const DEFAULT_STACK: StackState = {
 	git: "true",
 	install: "true",
 	api: "trpc",
+	webDeploy: "none",
 };
 
 export const isStackDefault = <K extends keyof StackState>(

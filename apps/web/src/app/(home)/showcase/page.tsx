@@ -2,78 +2,81 @@
 
 import React from "react";
 import { FolderOpen, Terminal } from "lucide-react";
-import { motion } from "motion/react";
 import Navbar from "../_components/navbar";
 import ShowcaseItem from "./_components/ShowcaseItem";
 
 const showcaseProjects = [
 	{
+		title: "DocSurf",
+		description:
+			"AI-powered writing platform with smart text suggestions, real-time autocomplete, and document management",
+		imageUrl: "https://docsurf.ai/opengraph.jpg",
+		liveUrl: "https://docsurf.ai/?ref=better-t-stack",
+		tags: [
+			"TanStack Start",
+			"Convex",
+			"Better Auth",
+			"Biome",
+			"Husky",
+			"Turborepo",
+			"pnpm",
+		],
+	},
+	{
+		title: "Look Crafted",
+		description: "✨ Transform Your Selfies into Stunning Headshots with AI",
+		imageUrl: "https://www.lookcrafted.com/opengraph-image.png",
+		liveUrl: "http://lookcrafted.com",
+		tags: [
+			"oRPC",
+			"Next.js",
+			"Hono",
+			"Bun",
+			"Neon",
+			"Drizzle",
+			"Better Auth",
+			"Biome",
+			"Husky",
+			"Turborepo",
+		],
+	},
+	{
+		title: "Screenshothis",
+		description: "Your All-in-One Screenshot Solution",
+		imageUrl:
+			"https://api.screenshothis.com/v1/screenshots/take?api_key=ss_live_NQJgRXqHcKPwnoMTuQmgiwLIGbVfihjpMyQhgsaMyNBHTyesvrxpYNXmdgcnxipc&url=https%3A%2F%2Fscreenshothis.com%2F&width=1200&height=630&device_scale_factor=0.75&block_ads=true&block_cookie_banners=true&block_trackers=true&prefers_color_scheme=light&prefers_reduced_motion=reduce&is_cached=true&cache_key=cfb06bf3616b1d03bdf455628a3830120e2080dd",
+		liveUrl:
+			"https://screenshothis.com?utm_source=better-t-stack&utm_medium=showcase&utm_campaign=referer",
+		tags: [
+			"oRPC",
+			"TanStack Start (vite)",
+			"Hono",
+			"pnpm",
+			"PostgreSQL",
+			"Drizzle",
+			"Better Auth",
+			"Biome",
+			"Husky",
+			"Turborepo",
+		],
+	},
+	{
 		title: "gl1.chat",
-		description: "An ai platform focused on speed, reliability and advanced workflows powered by trpc, drizzle, vite, elysia, tanstack router",
-		imageUrl: "https://gl1.chat/", // Placeholder, consider adding a proper image if available
+		description:
+			"An ai platform focused on speed, reliability and advanced workflows powered by trpc, drizzle, vite, elysia, tanstack router",
+		imageUrl: "https://gl1.chat/social-share-image.png",
 		liveUrl: "https://gl1.chat/?ref=better-t-stack",
 		tags: ["tRPC", "Drizzle", "Elysia", "Vite", "TanStack Router"],
-	},
-	{
-		title: "Project Alpha",
-		description: "A cool project built with Better-T-Stack.",
-		imageUrl: "https://via.placeholder.com/400x300?text=Project+Alpha",
-		liveUrl: "#",
-		sourceUrl: "#",
-		tags: ["Next.js", "tRPC", "Drizzle"],
-	},
-	{
-		title: "Beta App",
-		description: "Another awesome application powered by Better-T-Stack.",
-		imageUrl: "https://via.placeholder.com/400x300?text=Beta+App",
-		liveUrl: "#",
-		sourceUrl: "#",
-		tags: ["Hono", "React Native", "SQLite"],
-	},
-	{
-		title: "Gamma Platform",
-		description: "Showcasing the versatility of Better-T-Stack.",
-		imageUrl: "https://via.placeholder.com/400x300?text=Gamma+Platform",
-		liveUrl: "#",
-		tags: ["Convex", "TanStack Router"],
 	},
 ];
 
 export default function ShowcasePage() {
-	const containerVariants = {
-		hidden: { opacity: 0 },
-		visible: {
-			opacity: 1,
-			transition: {
-				staggerChildren: 0.1,
-				delayChildren: 0.2,
-			},
-		},
-	};
-
-	const itemVariants = {
-		hidden: { opacity: 0, y: 20 },
-		visible: {
-			opacity: 1,
-			y: 0,
-			transition: {
-				duration: 0.5,
-				ease: "easeOut",
-			},
-		},
-	};
-
 	return (
 		<>
 			<Navbar />
 			<main className="flex min-h-svh flex-col items-center bg-background px-4 pt-24 pb-10 sm:px-6 md:px-8 md:pt-28 lg:pt-32">
-				<motion.div
-					className="mx-auto w-full max-w-6xl"
-					initial="hidden"
-					animate="visible"
-					variants={containerVariants}
-				>
-					<motion.div className="mb-8" variants={itemVariants}>
+				<div className="mx-auto w-full max-w-6xl">
+					<div className="mb-8">
 						<div className="mb-6 flex items-center gap-2">
 							<Terminal className="h-4 w-4 text-primary" />
 							<span className="font-bold font-mono text-lg">
@@ -115,18 +118,15 @@ export default function ShowcasePage() {
 								</div>
 							</div>
 						</div>
-					</motion.div>
+					</div>
 
-					<motion.div
-						className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
-						variants={containerVariants}
-					>
+					<div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
 						{showcaseProjects.map((project, index) => (
 							<ShowcaseItem key={project.title} {...project} index={index} />
 						))}
-					</motion.div>
+					</div>
 
-					<motion.div className="mt-8" variants={itemVariants}>
+					<div className="mt-8">
 						<div className="terminal-block-hover rounded border border-border bg-muted/20 p-4">
 							<div className="flex items-center gap-2 text-sm">
 								<span className="text-primary">$</span>
@@ -142,8 +142,8 @@ export default function ShowcasePage() {
 								</span>
 							</div>
 						</div>
-					</motion.div>
-				</motion.div>
+					</div>
+				</div>
 			</main>
 		</>
 	);
