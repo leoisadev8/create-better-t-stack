@@ -1,51 +1,12 @@
 <script setup lang="ts">
-import z from 'zod'
-import type { FormSubmitEvent } from '#ui/types'
-const {$authClient} = useNuxtApp()
-
 const emit = defineEmits(['switchToSignIn'])
 
-const toast = useToast()
-const loading = ref(false)
+// Use the auth composable which encapsulates reactive state and auth logic
+const { state, loading, schema, signUp } = useSignUp()
 
-const schema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
-
-type Schema = z.output<typeof schema>
-
-const state = reactive({
-  name: '',
-  email: '',
-  password: '',
-})
-
-async function onSubmit (event: FormSubmitEvent<Schema>) {
-  loading.value = true
-  try {
-    await $authClient.signUp.email(
-      {
-        name: event.data.name,
-        email: event.data.email,
-        password: event.data.password,
-      },
-      {
-        onSuccess: () => {
-          toast.add({ title: 'Sign up successful' })
-          navigateTo('/dashboard', { replace: true })
-        },
-        onError: (error) => {
-          toast.add({ title: 'Sign up failed', description: error.error.message })
-        },
-      },
-    )
-  } catch (error: any) {
-     toast.add({ title: 'An unexpected error occurred', description: error.message || 'Please try again.' })
-  } finally {
-    loading.value = false
-  }
+// Handle form submission
+async function onSubmit(event: any) {
+  await signUp(event)
 }
 </script>
 
